@@ -183,13 +183,12 @@ body {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    justify-content: justify-between;
+    justify-content: space-between;
     background-color: rgba(11, 15, 25, 0.8);
     backdrop-filter: blur(10px);
     position: sticky;
     top: 0;
     z-index: 5;
-    justify-content: space-between;
 }
 
 #viewTitle {
@@ -585,6 +584,74 @@ textarea.form-control {
     margin-bottom: 4px;
 }
 
+/* Alta estantería: badge naranja */
+.location-badge-alta {
+    background-color: #fff7ed;
+    border-color: #f59e0b;
+    color: #92400e;
+    font-weight: 700;
+}
+
+/* Fila de montacarguista en la tabla del panel */
+.picking-row-monta {
+    background-color: rgba(245, 158, 11, 0.06);
+}
+
+/* Badge de nivel para montacarguista */
+.badge-monta {
+    background-color: #f59e0b;
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* ── Panel de alerta montacarguista en vista de picking ────────────────── */
+.picking-monta-alert {
+    border: 2px solid #f59e0b;
+    border-radius: 10px;
+    background: rgba(245, 158, 11, 0.06);
+    padding: 14px 16px;
+    margin-bottom: 18px;
+}
+
+.picking-monta-alert-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.picking-monta-alert-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.picking-monta-alert-text {
+    flex: 1;
+    min-width: 200px;
+}
+
+.picking-monta-alert-text strong {
+    display: block;
+    color: #92400e;
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.picking-monta-alert-text span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 600px) {
+    .picking-monta-alert-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
 /* PRESTACIONES DE IMPRESIÓN (window.print()) */
 .print-container {
     display: none;
@@ -781,4 +848,168 @@ textarea.form-control {
     letter-spacing: 0.5px;
     border: 1px solid rgba(59, 130, 246, 0.3);
 }
+
+/* ESTILOS PARA MEJORAS WMS */
+.multi-loc-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.multi-loc-row {
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.ubicacion-selector-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.ubi-warning-msg {
+    color: var(--color-warning);
+    background-color: rgba(245, 158, 11, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    margin-top: 2px;
+}
+
+.alert-info {
+    background-color: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    padding: 16px;
+    border-radius: var(--radius-md);
+}
+
+/* RESPONSIVE DESIGN - MEDIA QUERIES */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .sidebar {
+        width: 220px;
+    }
+    
+    .main-content {
+        margin-left: 220px;
+    }
+    
+    .view-viewport {
+        padding: 24px;
+    }
+    
+    .main-header {
+        padding: 0 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: sticky;
+        top: 0;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--bg-surface);
+    }
+    
+    .sidebar-header {
+        padding: 12px 16px;
+    }
+    
+    .sidebar-nav {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 8px 12px;
+        white-space: nowrap;
+        gap: 6px;
+    }
+    
+    .sidebar-nav::-webkit-scrollbar {
+        display: none; /* Ocultar barra de desplazamiento en móvil */
+    }
+    
+    .nav-section-title {
+        display: none !important;
+    }
+    
+    .nav-item {
+        margin-bottom: 0;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .sidebar-footer {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .main-header {
+        height: 60px;
+        padding: 0 16px;
+        position: relative;
+        background-color: var(--bg-base);
+    }
+    
+    #viewTitle {
+        font-size: 1.3rem;
+    }
+    
+    .view-viewport {
+        padding: 16px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .form-group.flex-1,
+    .form-group.flex-2,
+    .form-group.flex-3 {
+        min-width: 100%;
+    }
+    
+    .align-self-end {
+        align-self: stretch;
+        width: 100%;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .card-header .flex-row,
+    .card-header .flex-row.gap-2 {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
 

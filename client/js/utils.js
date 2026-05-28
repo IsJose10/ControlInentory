@@ -1,0 +1,412 @@
+import { state } from './state.js';
+
+export function formatoMoneda(valor) {
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(valor || 0);
+}
+
+export function parseNumberString(value) {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+
+    let str = String(value).trim();
+    if (!str) return 0;
+
+    str = str.replace(/[$\s]/g, '');
+
+    const hasComma = str.includes(',');
+    const hasDot = str.includes('.');
+
+    if (hasComma && hasDot) {
+        if (str.indexOf(',') > str.indexOf('.')) {
+            str = str.replace(/\./g, '').replace(/,/g, '.');
+        } else {
+            str = str.replace(/,/g, '');
+        }
+    } else if (hasComma) {
+        const parts = str.split(',');
+        if (parts[1].length === 3 && parts[0].length <= 3) {
+            str = str.replace(/,/g, '');
+        } else {
+            str = str.replace(/,/g, '.');
+        }
+    } else if (hasDot) {
+        const parts = str.split('.');
+        if (parts.length === 2 && parts[1].length === 3) {
+            str = str.replace(/\./g, '');
+        }
+    }
+
+    const num = Number(str);
+    return isNaN(num) ? 0 : num;
+}
+
+export function formatExcelDate(value) {
+    if (!value) return '';
+
+    const num = Number(value);
+    if (!isNaN(num) && num > 30000 && num < 60000) {
+        const date = new Date((num - 25569) * 86400 * 1000);
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    const str = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmy) {
+        const d = dmy[1].padStart(2, '0');
+        const m = dmy[2].padStart(2, '0');
+        const y = dmy[3];
+        return `${y}-${m}-${d}`;
+    }
+
+    const ymd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (ymd) {
+        const y = ymd[1];
+        const m = ymd[2].padStart(2, '0');
+        const d = ymd[3].padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    try {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+            return d.toISOString().split('T')[0];
+        }
+    } catch (e) { }
+
+    return '';
+}
+
+export function findHeaderRow(rows, aliasMap) {
+    let bestRowIndex = -1;
+    let maxMatches = -1;
+
+    for (let i = 0; i < Math.min(rows.length, 20); i++) {
+        const row = rows[i];
+        if (!row || !Array.isArray(row)) continue;
+
+        let matches = 0;
+        row.forEach(cell => {
+            if (cell === null || cell === undefined) return;
+            const cellStr = String(cell).trim().toLowerCase();
+            if (!cellStr) return;
+
+            for (const key in aliasMap) {
+                if (aliasMap[key].includes(cellStr)) {
+                    matches++;
+                    break;
+                }
+            }
+        });
+
+        if (matches > maxMatches && matches >= 2) {
+            maxMatches = matches;
+            bestRowIndex = i;
+        }
+    }
+    return { headerIndex: bestRowIndex, matchesCount: maxMatches };
+}
+
+export function mapColumns(headerRow, aliasMap) {
+    const colMapping = {};
+    for (const key in aliasMap) {
+        colMapping[key] = -1;
+    }
+
+    headerRow.forEach((cell, index) => {
+        if (cell === null || cell === undefined) return;
+        const cellStr = String(cell).trim().toLowerCase();
+        if (!cellStr) return;
+
+        for (const key in aliasMap) {
+            if (aliasMap[key].includes(cellStr) && colMapping[key] === -1) {
+                colMapping[key] = index;
+                break;
+            }
+        }
+    });
+    return colMapping;
+}
+
+export function readExcelOrCSV(file, aliasMap, callback) {
+    const reader = new FileReader();
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+    reader.onload = function (e) {
+        try {
+            let rows = [];
+            if (isExcel) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            } else {
+                const text = e.target.result;
+                rows = text.split('\n').map(line => {
+                    const result = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            result.push(current.trim());
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    result.push(current.trim());
+                    return result;
+                });
+            }
+
+            const { headerIndex, matchesCount } = findHeaderRow(rows, aliasMap);
+            if (headerIndex === -1) {
+                throw new Error("No se pudieron mapear las columnas requeridas. Verifique que los encabezados del archivo coincidan con los nombres esperados.");
+            }
+
+            const colMapping = mapColumns(rows[headerIndex], aliasMap);
+            colMapping._headerIndex = headerIndex;
+
+            callback(null, rows, colMapping);
+        } catch (err) {
+            callback(err);
+        }
+    };
+
+    if (isExcel) {
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.readAsText(file, 'UTF-8');
+    }
+}
+
+export function getLocPos(ubicacion) {
+    if (!ubicacion || ubicacion.length < 7) return 0;
+    return parseInt(ubicacion.substring(5, 7), 10);
+}
+
+export function esZonaMontacarguista(ubicacion) {
+    return getLocPos(ubicacion) >= 20;
+}
+
+export function esZonaAuxiliar(ubicacion) {
+    const p = getLocPos(ubicacion);
+    return p >= 10 && p < 20;
+}
+
+export function populateProductosSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (select) {
+        select.innerHTML = '<option value="">Seleccione producto...</option>' +
+            state.productos.map(p => `<option value="${p.codigo}">${p.codigo} - ${p.descripcion}</option>`).join('');
+    }
+}
+
+export function populateClientesSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (select) {
+        select.innerHTML = '<option value="">Seleccione cliente...</option>' +
+            state.clientes.map(c => `<option value="${c.nit}">${c.nombre}</option>`).join('');
+    }
+}
+
+export function populateProveedoresSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (select) {
+        select.innerHTML = '<option value="">Seleccione proveedor...</option>' +
+            state.proveedores.map(p => `<option value="${p.nit}">${p.nombre}</option>`).join('');
+    }
+}
+
+export function ubiSelectorHTML(prefix, currentVal = '') {
+    let selVano = '01', selNivel = '01', selPos = '10';
+    if (currentVal && currentVal.length === 7 && currentVal.startsWith('V')) {
+        selVano = currentVal.substring(1, 3);
+        selNivel = currentVal.substring(3, 5);
+        selPos = currentVal.substring(5, 7);
+    }
+
+    const vanoOpts = UBICACION.vanos.map(v => `<option value="${v}" ${v === selVano ? 'selected' : ''}>V${v}</option>`).join('');
+    const nivelOpts = UBICACION.niveles.map(n => `<option value="${n}" ${n === selNivel ? 'selected' : ''}>${n}</option>`).join('');
+    const posOpts = UBICACION.posiciones.map(p => `<option value="${p}" ${p === selPos ? 'selected' : ''}>${p}</option>`).join('');
+
+    return `
+        <div class="ubicacion-selector-wrapper" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+            <div class="ubicacion-selector" id="ubi-wrap-${prefix}">
+                <select class="ubi-vano" data-ubi-prefix="${prefix}" onchange="actualizarCodigoUbicacion('${prefix}')">${vanoOpts}</select>
+                <select class="ubi-nivel" data-ubi-prefix="${prefix}" onchange="actualizarCodigoUbicacion('${prefix}')">${nivelOpts}</select>
+                <select class="ubi-pos"  data-ubi-prefix="${prefix}" onchange="actualizarCodigoUbicacion('${prefix}')">${posOpts}</select>
+                <span class="ubi-code-preview" id="ubi-code-${prefix}">V${selVano}${selNivel}${selPos}</span>
+            </div>
+            <div class="ubi-warning-msg" id="ubi-warn-${prefix}" style="color:#f59e0b; font-size:0.75rem; margin-top:2px; font-weight:500; display:none;"></div>
+        </div>
+    `;
+}
+
+export function ubicacionSelectorHTML(prefix, currentVal = '') {
+    return ubiSelectorHTML(prefix, currentVal);
+}
+
+export function actualizarCodigoUbicacion(prefix) {
+    const wrap = document.getElementById(`ubi-wrap-${prefix}`);
+    if (!wrap) return;
+    const vano = wrap.querySelector('.ubi-vano').value;
+    const nivel = wrap.querySelector('.ubi-nivel').value;
+    const pos = wrap.querySelector('.ubi-pos').value;
+    const code = `V${vano}${nivel}${pos}`;
+    const codePreview = document.getElementById(`ubi-code-${prefix}`);
+    if (codePreview) codePreview.textContent = code;
+    validarCondicionesUbicacion(prefix, code);
+}
+
+export function calcularVolumenOcupadoCliente(ubicacion) {
+    let totalVol = 0;
+    if (!state.stockPorUbicacion) return 0;
+    state.stockPorUbicacion.forEach(item => {
+        if (item.ubicacion === ubicacion && item.stock > 0) {
+            const prod = state.productos.find(p => p.codigo === item.codigo_producto);
+            if (prod) {
+                const alto = prod.alto || 0;
+                const largo = prod.largo || 0;
+                const ancho = prod.ancho || 0;
+                totalVol += item.stock * alto * largo * ancho;
+            }
+        }
+    });
+    return totalVol;
+}
+
+export function validarCondicionesUbicacion(prefix, code) {
+    const warnEl = document.getElementById(`ubi-warn-${prefix}`);
+    if (!warnEl) return;
+
+    warnEl.textContent = '';
+    warnEl.style.display = 'none';
+
+    let productCode = '';
+    let newQty = 0;
+
+    if (prefix.startsWith('in-')) {
+        const match = prefix.match(/^in-(\d+)-(\d+)/);
+        if (match && state.activeReceiptOC) {
+            const itemIdx = Number(match[1]);
+            const rowId = Number(match[2]);
+            const item = state.activeReceiptOC.items[itemIdx];
+            if (item) {
+                productCode = item.codigo;
+                const qtyInput = document.querySelector(`input.in-qty-multi[data-item-index="${itemIdx}"][data-row-id="${rowId}"]`);
+                if (qtyInput) newQty = Number(qtyInput.value) || 0;
+            }
+        }
+    } else if (prefix === 'out') {
+        const prodEl = document.getElementById('out-producto');
+        if (prodEl) productCode = prodEl.value;
+        const qtyInput = document.getElementById('out-cantidad');
+        if (qtyInput) newQty = Number(qtyInput.value) || 0;
+    }
+
+    if (!productCode) return;
+
+    const product = state.productos.find(p => p.codigo === productCode);
+    const warnings = [];
+
+    if (product) {
+        const alto = product.alto || 0;
+        const largo = product.largo || 0;
+        const ancho = product.ancho || 0;
+
+        if (alto > 200 || largo > 240 || ancho > 120) {
+            warnings.push(`<strong style="color:var(--color-danger);">❌ Excede límites del Rack (Alto: 2.0m, Largo: 2.4m, Ancho: 1.2m)</strong>`);
+        }
+    }
+
+    if (product && product.peso > 20) {
+        const nivel = code.substring(3, 5);
+        if (Number(nivel) > 5) {
+            warnings.push(`⚠️ Producto pesado (${product.peso}kg). Se sugieren niveles bajos (01-05).`);
+        }
+    }
+
+    if (state.stockPorUbicacion && state.stockPorUbicacion.length > 0) {
+        const occupiers = state.stockPorUbicacion.filter(s => s.ubicacion === code && s.codigo_producto !== productCode && s.stock > 0);
+        if (occupiers.length > 0) {
+            const occupierText = occupiers.map(o => `${o.codigo_producto} (${o.stock} und)`).join(', ');
+            warnings.push(`⚠️ Ubicación mezclada. Ocupada por: ${occupierText}.`);
+        }
+    }
+
+    if (product) {
+        const occupied = calcularVolumenOcupadoCliente(code);
+        const addedVol = newQty * (product.alto || 0) * (product.largo || 0) * (product.ancho || 0);
+        const totalVol = occupied + addedVol;
+        const maxVol = 5760000;
+        const pct = Math.min(100, (totalVol / maxVol) * 100);
+
+        let volColor = '#10b981';
+        if (pct > 90) {
+            volColor = '#ef4444';
+            warnings.push(`<strong style="color:var(--color-danger);">❌ Capacidad volumétrica excedida (${pct.toFixed(1)}%)</strong>`);
+        } else if (pct > 75) {
+            volColor = '#f59e0b';
+        }
+
+        const barHTML = `
+            <div style="margin-top: 6px; width: 100%;">
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">
+                    <span>Capacidad Volumétrica 3D:</span>
+                    <span style="color:${volColor}">${(totalVol / 1000000).toFixed(3)} m³ / 5.760 m³ (${pct.toFixed(1)}%)</span>
+                </div>
+                <div style="width:100%; height:6px; background:var(--bg-base); border-radius:3px; margin-top:3px; overflow:hidden; border: 1px solid var(--border-color);">
+                    <div style="width:${pct}%; height:100%; background:${volColor}; border-radius:3px; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+        `;
+
+        warnEl.innerHTML = (warnings.length > 0 ? warnings.join('<br>') + '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.08); margin:6px 0;">' : '') + barHTML;
+        warnEl.style.display = 'block';
+        warnEl.style.backgroundColor = 'var(--bg-surface-elevated)';
+        warnEl.style.padding = '8px';
+        warnEl.style.borderRadius = 'var(--radius-md)';
+        warnEl.style.border = '1px solid var(--border-color)';
+    }
+}
+
+export function getUbicacionCode(prefix) {
+    const el = document.getElementById(`ubi-code-${prefix}`);
+    return el ? el.textContent.trim() : '';
+}
+
+export function validarUbicacion(code) {
+    if (!/^V\d{6}$/.test(code)) return false;
+    const vano = code.substring(1, 3);
+    const nivel = code.substring(3, 5);
+    const pos = code.substring(5, 7);
+    return UBICACION.vanos.includes(vano) &&
+        UBICACION.niveles.includes(nivel) &&
+        UBICACION.posiciones.includes(pos);
+}
+
+export function initDateInputs() {
+    const today = new Date().toISOString().split('T')[0];
+    const dateInputs = ['oc-fecha', 'oc-fecha-envio', 'os-fecha', 'os-fecha-envio', 'venta-fecha', 'in-fecha', 'out-fecha', 'monta-fecha'];
+    dateInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = today;
+    });
+}
+
+// Bind to window for global availability
+window.actualizarCodigoUbicacion = actualizarCodigoUbicacion;
+window.initDateInputs = initDateInputs;
+window.formatoMoneda = formatoMoneda;
+
+
+
