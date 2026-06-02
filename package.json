@@ -1,15 +1,20 @@
 {
   "name": "habitad-wms",
   "version": "1.0.0",
-  "description": "Sistema local WMS para Habitad en SQLite y Node.js",
+  "description": "Sistema WMS para Habitad con SQLite local y PostgreSQL en producción",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=25"
+  },
   "keywords": [
     "wms",
+    "postgresql",
     "sqlite",
-    "local-app"
+    "inventory",
+    "warehouse"
   ],
   "author": "",
   "license": "ISC",
