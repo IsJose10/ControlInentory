@@ -337,6 +337,8 @@
                             onclick="switchInvTab('consulta')">Consulta de Inventario</button>
                         <button class="btn btn-secondary" id="inv-tab-masivo" onclick="switchInvTab('masivo')">Carga
                             Inventario General (Ciego)</button>
+                        <button class="btn btn-secondary" id="inv-tab-regularizacion"
+                            onclick="switchInvTab('regularizacion')">Regularización</button>
                     </div>
 
                     <!-- TAB 1: CONSULTA DE INVENTARIO -->
@@ -428,6 +430,11 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- TAB 3: REGULARIZACIÓN DE INVENTARIO -->
+                    <div id="inv-pane-regularizacion" class="card" style="display:none;">
+                        <!-- Contenido inyectado dinámicamente por regularizacion.js (initRegularizacion) -->
                     </div>
 
                     <!-- Modal/Panel Detalle Ubicaciones -->

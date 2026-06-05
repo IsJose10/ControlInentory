@@ -822,5 +822,156 @@ module.exports = {
         }
 
         return { success: true, movimientos: movimientosARegistrar };
+    },
+
+    // --- REGULARIZACIÓN DE INVENTARIO ---
+
+    // Listado de conteo para zona Picking (posición < 20, stock neto > 0)
+    async getRegularizacionPicking() {
+        const rows = await executeQuery(`
+            SELECT m.codigo_producto AS codigo,
+                   p.descripcion AS descripcion,
+                   m.ubicacion AS ubicacion,
+                   SUM(CASE WHEN m.tipo = 'IN' THEN m.cantidad ELSE -m.cantidad END) AS cantidad_sistema
+            FROM inventario_movimientos m
+            JOIN productos p ON m.codigo_producto = p.codigo
+            WHERE CAST(SUBSTR(m.ubicacion, 6, 2) AS INTEGER) < 20
+            GROUP BY m.codigo_producto, p.descripcion, m.ubicacion
+            HAVING SUM(CASE WHEN m.tipo = 'IN' THEN m.cantidad ELSE -m.cantidad END) > 0
+            ORDER BY m.ubicacion ASC, m.codigo_producto ASC
+        `);
+        rows.forEach(row => {
+            row.cantidad_sistema = Number(row.cantidad_sistema || 0);
+        });
+        return rows;
+    },
+
+    // Listado de conteo para zona Montacarguista (posición >= 20, stock neto > 0)
+    async getRegularizacionMontacarguista() {
+        const rows = await executeQuery(`
+            SELECT m.codigo_producto AS codigo,
+                   p.descripcion AS descripcion,
+                   m.ubicacion AS ubicacion,
+                   SUM(CASE WHEN m.tipo = 'IN' THEN m.cantidad ELSE -m.cantidad END) AS cantidad_sistema
+            FROM inventario_movimientos m
+            JOIN productos p ON m.codigo_producto = p.codigo
+            WHERE CAST(SUBSTR(m.ubicacion, 6, 2) AS INTEGER) >= 20
+            GROUP BY m.codigo_producto, p.descripcion, m.ubicacion
+            HAVING SUM(CASE WHEN m.tipo = 'IN' THEN m.cantidad ELSE -m.cantidad END) > 0
+            ORDER BY m.ubicacion ASC
+        `);
+        rows.forEach(row => {
+            row.cantidad_sistema = Number(row.cantidad_sistema || 0);
+        });
+        return rows;
+    },
+
+    // Aplicar ajustes de regularización (ronda final) de forma transaccional.
+    // Inserta un movimiento de ajuste por cada ítem con diferencia distinta de cero:
+    //   - tipo 'IN' si la diferencia es positiva (faltaba stock en el sistema)
+    //   - tipo 'OUT' si la diferencia es negativa (sobraba stock en el sistema)
+    //   - documento_referencia con formato REG-YYYY-MM-DD-{ZONA}
+    // Si cualquier inserción falla, se revierten todas (atomicidad).
+    async aplicarAjusteRegularizacion(ajustes, zona) {
+        // Permitir recibir el payload completo { zona, ajustes }
+        if (ajustes && !Array.isArray(ajustes) && Array.isArray(ajustes.ajustes)) {
+            zona = zona != null ? zona : ajustes.zona;
+            ajustes = ajustes.ajustes;
+        }
+
+        const listaAjustes = Array.isArray(ajustes) ? ajustes : [];
+        const fechaActual = new Date().toISOString().split('T')[0];
+        const zonaRef = String(zona || '').trim().toUpperCase() || 'GENERAL';
+        const documentoReferencia = `REG-${fechaActual}-${zonaRef}`;
+
+        // Construir la lista de movimientos a registrar (solo diferencias != 0)
+        const movimientos = [];
+        const resumen = [];
+        for (const aj of listaAjustes) {
+            const codigo = aj.codigo_producto != null ? aj.codigo_producto : aj.codigo;
+            const cantidadSistema = Number(aj.cantidad_sistema || 0);
+            const cantidadContada = Number(aj.cantidad_contada || 0);
+            const diferencia = aj.diferencia != null ? Number(aj.diferencia) : (cantidadContada - cantidadSistema);
+
+            if (!codigo || !aj.ubicacion || isNaN(diferencia) || diferencia === 0) {
+                continue;
+            }
+
+            movimientos.push({
+                codigo_producto: codigo,
+                tipo: diferencia > 0 ? 'IN' : 'OUT',
+                cantidad: Math.abs(diferencia),
+                ubicacion: aj.ubicacion
+            });
+            resumen.push({
+                codigo_producto: codigo,
+                ubicacion: aj.ubicacion,
+                cantidad_anterior: cantidadSistema,
+                cantidad_nueva: cantidadContada,
+                diferencia
+            });
+        }
+
+        if (movimientos.length === 0) {
+            return { success: true, ajustes_aplicados: 0, documento_referencia: documentoReferencia, resumen: [] };
+        }
+
+        const insertSql = `
+            INSERT INTO inventario_movimientos (codigo_producto, tipo, documento_referencia, fecha, cantidad, ubicacion)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+
+        if (isPostgres) {
+            // Transacción explícita sobre un único cliente del pool
+            const client = await pgPool.connect();
+            try {
+                await client.query('BEGIN');
+                for (const mov of movimientos) {
+                    let index = 1;
+                    const pgSql = insertSql.replace(/\?/g, () => `$${index++}`);
+                    await client.query(pgSql, [
+                        mov.codigo_producto,
+                        mov.tipo,
+                        documentoReferencia,
+                        fechaActual,
+                        mov.cantidad,
+                        mov.ubicacion
+                    ]);
+                }
+                await client.query('COMMIT');
+            } catch (e) {
+                await client.query('ROLLBACK');
+                throw e;
+            } finally {
+                client.release();
+            }
+        } else {
+            // Transacción explícita en SQLite sobre la misma conexión
+            sqliteDb.exec('BEGIN');
+            try {
+                for (const mov of movimientos) {
+                    const stmt = sqliteDb.prepare(insertSql);
+                    stmt.run(
+                        mov.codigo_producto,
+                        mov.tipo,
+                        documentoReferencia,
+                        fechaActual,
+                        mov.cantidad,
+                        mov.ubicacion
+                    );
+                }
+                sqliteDb.exec('COMMIT');
+            } catch (e) {
+                sqliteDb.exec('ROLLBACK');
+                throw e;
+            }
+        }
+
+        return {
+            success: true,
+            ajustes_aplicados: movimientos.length,
+            documento_referencia: documentoReferencia,
+            resumen
+        };
     }
 };

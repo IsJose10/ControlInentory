@@ -180,6 +180,28 @@ const apiRoutes = {
         }
         const result = await db.ejecutarDescenso(body.codigo, body.cantidad);
         return sendJSON(res, 200, result);
+    },
+
+    // REGULARIZACIÓN - LISTADO DE CONTEO ZONA PICKING (posición < 20)
+    'GET /api/inventario/regularizacion/picking': async (req, res) => {
+        const rows = await db.getRegularizacionPicking();
+        return sendJSON(res, 200, rows);
+    },
+
+    // REGULARIZACIÓN - LISTADO DE CONTEO ZONA MONTACARGUISTA (posición >= 20)
+    'GET /api/inventario/regularizacion/montacarguista': async (req, res) => {
+        const rows = await db.getRegularizacionMontacarguista();
+        return sendJSON(res, 200, rows);
+    },
+
+    // REGULARIZACIÓN - APLICAR AJUSTES DE RONDA FINAL (transaccional)
+    'POST /api/inventario/regularizacion/aplicar': async (req, res) => {
+        const body = await getRequestBody(req);
+        if (!body.ajustes || !Array.isArray(body.ajustes)) {
+            return sendJSON(res, 400, { error: 'Formato de ajustes inválido.' });
+        }
+        const result = await db.aplicarAjusteRegularizacion(body.ajustes, body.zona);
+        return sendJSON(res, 200, result);
     }
 };
 

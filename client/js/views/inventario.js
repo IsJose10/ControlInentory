@@ -1,5 +1,6 @@
 import { state, UBICACION } from '../state.js';
 import { fetchAPI } from '../api.js';
+import { initRegularizacion } from './regularizacion.js';
 import { 
     formatoMoneda, 
     validarUbicacion, 
@@ -108,19 +109,29 @@ export function closeInvDetails() {
 export function switchInvTab(tab) {
     const paneConsulta = document.getElementById('inv-pane-consulta');
     const paneMasivo = document.getElementById('inv-pane-masivo');
+    const paneRegularizacion = document.getElementById('inv-pane-regularizacion');
     const btnConsulta = document.getElementById('inv-tab-consulta');
     const btnMasivo = document.getElementById('inv-tab-masivo');
+    const btnRegularizacion = document.getElementById('inv-tab-regularizacion');
 
     if (paneConsulta) paneConsulta.style.display = tab === 'consulta' ? 'block' : 'none';
     if (paneMasivo) paneMasivo.style.display = tab === 'masivo' ? 'block' : 'none';
+    if (paneRegularizacion) paneRegularizacion.style.display = tab === 'regularizacion' ? 'block' : 'none';
+
+    // Reset all tab buttons to inactive, then highlight the active one below.
+    if (btnConsulta) btnConsulta.className = 'btn btn-secondary';
+    if (btnMasivo) btnMasivo.className = 'btn btn-secondary';
+    if (btnRegularizacion) btnRegularizacion.className = 'btn btn-secondary';
 
     if (tab === 'consulta') {
         if (btnConsulta) btnConsulta.className = 'btn btn-primary';
-        if (btnMasivo) btnMasivo.className = 'btn btn-secondary';
         loadStockGlobal();
-    } else {
-        if (btnConsulta) btnConsulta.className = 'btn btn-secondary';
+    } else if (tab === 'masivo') {
         if (btnMasivo) btnMasivo.className = 'btn btn-primary';
+    } else if (tab === 'regularizacion') {
+        if (btnRegularizacion) btnRegularizacion.className = 'btn btn-primary';
+        // Montar la vista de regularización con "Picking" activa por defecto.
+        initRegularizacion('inv-pane-regularizacion');
     }
 }
 

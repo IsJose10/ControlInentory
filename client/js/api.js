@@ -23,3 +23,17 @@ export async function fetchAPI(endpoint, method = 'GET', body = null) {
         throw err;
     }
 }
+
+// --- Regularización de Inventario ---
+
+export async function getRegularizacionPicking() {
+    return await fetchAPI('/inventario/regularizacion/picking');
+}
+
+export async function getRegularizacionMontacarguista() {
+    return await fetchAPI('/inventario/regularizacion/montacarguista');
+}
+
+export async function aplicarAjustesRegularizacion(payload) {
+    return await fetchAPI('/inventario/regularizacion/aplicar', 'POST', payload);
+}

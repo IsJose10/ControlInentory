@@ -323,6 +323,34 @@ textarea.form-control {
     resize: vertical;
 }
 
+/* Validación visual de inputs de regularización (Requisitos 5.2, 5.3) */
+.reg-input-valid {
+    border-color: var(--color-success) !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+
+.reg-input-invalid {
+    border-color: var(--color-danger) !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Resaltado de filas con discrepancia en la tabla de regularización (Req 6.3) */
+.reg-row-discrepancia {
+    background-color: rgba(239, 68, 68, 0.06);
+}
+
+.reg-row-discrepancia td {
+    border-left: 3px solid transparent;
+}
+
+.reg-row-discrepancia td:first-child {
+    border-left: 3px solid var(--color-danger);
+}
+
+.reg-row-discrepancia .reg-diferencia {
+    color: var(--color-danger);
+}
+
 .align-self-end {
     align-self: flex-end;
 }

@@ -739,3 +739,125 @@ export function imprimirDocumento(tipoDoc) {
         window.print();
     }, 150);
 }
+
+// Genera la hoja de conteo imprimible para el proceso de Regularización
+// (Requisitos 4.1, 4.2, 4.3, 4.4, 4.5, 4.6).
+// - zona: 'picking' | 'montacarguista'
+// - ronda: número entero >= 1 (ronda actual de conteo)
+// - items: array de { codigo, descripcion, ubicacion, cantidad_sistema }
+// Reutiliza el contenedor #printContainer y el patrón window.print() existente.
+export function imprimirHojaRegularizacion(zona, ronda, items) {
+    const lista = Array.isArray(items) ? items.slice() : [];
+
+    // Requisito 4.5: si no hay ítems, alertar y no abrir/generar el documento.
+    if (lista.length === 0) {
+        alert('No hay ítems disponibles para generar la hoja de conteo.');
+        return;
+    }
+
+    const printContainer = document.getElementById('printContainer');
+    if (!printContainer) return;
+    printContainer.innerHTML = '';
+
+    // Asegurar el orden por ubicación ASC (Requisito 4.1).
+    lista.sort((a, b) => {
+        const ua = String(a.ubicacion || '');
+        const ub = String(b.ubicacion || '');
+        if (ua < ub) return -1;
+        if (ua > ub) return 1;
+        return 0;
+    });
+
+    // Etiqueta legible de zona (Requisito 4.3).
+    const zonaLabel = zona === 'montacarguista' ? 'Montacarguista' : 'Picking';
+
+    // Fecha en formato DD/MM/AAAA (Requisito 4.3).
+    const hoy = new Date();
+    const dd = String(hoy.getDate()).padStart(2, '0');
+    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    const yyyy = hoy.getFullYear();
+    const fechaStr = `${dd}/${mm}/${yyyy}`;
+
+    const rondaNum = Number.isInteger(ronda) && ronda >= 1 ? ronda : 1;
+
+    // Filas de la tabla con número de ítem secuencial y casilla en blanco
+    // (Requisitos 4.1, 4.2). El ancho mínimo de la casilla de conteo es 25mm
+    // (>= 20mm) para permitir la escritura manual.
+    let tableRowsHTML = '';
+    lista.forEach((it, idx) => {
+        tableRowsHTML += `
+            <tr>
+                <td style="text-align:center;">${idx + 1}</td>
+                <td><strong>${it.codigo}</strong></td>
+                <td>${it.descripcion || ''}</td>
+                <td style="text-align:center; font-weight:bold;">${it.ubicacion}</td>
+                <td style="text-align:center; font-weight:bold;">${it.cantidad_sistema}</td>
+                <td style="min-width:25mm; width:25mm; height:9mm;">&nbsp;</td>
+            </tr>
+        `;
+    });
+
+    const htmlContent = `
+        <div class="print-invoice">
+            <div class="print-header">
+                <div class="print-logo-section">
+                    <h1>HABITAD WMS</h1>
+                    <p style="font-size: 8pt; margin: 2px 0;">Nit: 123.456.789-0</p>
+                    <p style="font-size: 8pt; margin: 2px 0;">Dirección: Zona Industrial Bodega 10</p>
+                </div>
+                <div class="print-doc-info">
+                    <h2>HOJA DE CONTEO - REGULARIZACIÓN</h2>
+                    <p style="font-size: 11pt; font-weight: bold; margin: 5px 0;">Zona: ${zonaLabel}</p>
+                    <p style="font-size: 11pt; font-weight: bold; margin: 5px 0;">Ronda Nº: ${rondaNum}</p>
+                    <p style="font-size: 8pt; margin: 2px 0;">Fecha de Generación: ${fechaStr}</p>
+                </div>
+            </div>
+
+            <div class="print-details-grid" style="grid-template-columns: 1fr;">
+                <div class="print-details-block">
+                    <h3>Instrucciones de Conteo</h3>
+                    <p>Recorra las ubicaciones en el orden indicado (ascendente) y registre la cantidad física contada en la casilla &quot;Conteo Físico&quot; de cada ítem.</p>
+                    <p style="color:#1e40af; font-weight:600; font-size:8.5pt;">Total de ítems a contar: ${lista.length}</p>
+                </div>
+            </div>
+
+            <table class="print-table">
+                <thead>
+                    <tr>
+                        <th style="width:6%; text-align:center;">Nº</th>
+                        <th style="width:18%;">Código</th>
+                        <th style="width:36%;">Descripción</th>
+                        <th style="width:14%; text-align:center;">Ubicación</th>
+                        <th style="width:11%; text-align:center;">Cant. Sistema</th>
+                        <th style="width:15%; text-align:center;">Conteo Físico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRowsHTML}
+                </tbody>
+            </table>
+
+            <div class="print-summary-section">
+                <div class="print-observaciones" style="width:100%;">
+                    <strong>Observaciones del Operador:</strong>
+                    <p style="margin-top: 10px; border-bottom: 1px solid #aaa; height: 35px;"></p>
+                </div>
+            </div>
+
+            <div class="print-signatures" style="margin-top: 30px;">
+                <div class="print-signature-line">Operador de Conteo (Firma)</div>
+                <div class="print-signature-line">Fecha de Ejecución del Conteo: ____ / ____ / ________</div>
+            </div>
+        </div>
+    `;
+
+    printContainer.innerHTML = htmlContent;
+
+    // Disparar la impresión nativa del navegador (mismo patrón que imprimirDocumento)
+    setTimeout(() => {
+        window.print();
+    }, 150);
+}
+
+// Bind to window for global availability (HTML inline onclick / app.js orchestrator pattern)
+window.imprimirHojaRegularizacion = imprimirHojaRegularizacion;
