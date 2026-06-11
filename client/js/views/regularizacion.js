@@ -460,16 +460,20 @@ export function confirmarRonda() {
         const bodyEl = document.getElementById(bodyIdForZona(zona));
         if (bodyEl) {
             bodyEl.innerHTML = `
-                <div class="text-center" style="padding: 32px 16px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 12px;">✅</div>
-                    <h3 style="margin-bottom: 8px; color: var(--color-success);">Inventario conforme</h3>
-                    <p style="font-size: 0.95rem;">
-                        El inventario físico coincide con el sistema en la ronda ${ronda}.
-                        No se requieren ajustes.
+                <div class="text-center" style="padding: 40px 20px;">
+                    <div style="font-size: 3.5rem; margin-bottom: 16px;">✅</div>
+                    <h3 style="margin-bottom: 8px; color: var(--color-success);">Inventario Conforme</h3>
+                    <p class="text-muted" style="max-width: 400px; margin: 0 auto 24px auto; font-size: 0.95rem;">
+                        No se detectaron discrepancias entre las cantidades físicas contadas y las registradas en el sistema.
                     </p>
-                    <button class="btn btn-secondary mt-3" onclick="cargarListadoConteo('${zona}')">
-                        Iniciar nuevo conteo
-                    </button>
+                    <div class="flex-row gap-2" style="justify-content: center;">
+                        <button class="btn btn-secondary" onclick="cargarListadoConteo('${zona}')">
+                            Iniciar nuevo conteo
+                        </button>
+                        <button class="btn btn-danger" onclick="window.logout()">
+                            Cerrar Sesión
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -607,15 +611,20 @@ export async function aplicarAjustes() {
         regularizacionState.finalizado = true;
         if (bodyEl) {
             bodyEl.innerHTML = `
-                <div class="text-center" style="padding: 32px 16px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 12px;">✅</div>
-                    <h3 style="margin-bottom: 8px; color: var(--color-success);">Sin diferencias</h3>
-                    <p style="font-size: 0.95rem;">
-                        No se encontraron diferencias y el inventario no requirió modificaciones.
+                <div class="text-center" style="padding: 40px 20px;">
+                    <div style="font-size: 3.5rem; margin-bottom: 16px;">✅</div>
+                    <h3 style="margin-bottom: 8px; color: var(--color-success);">Sin Diferencias</h3>
+                    <p class="text-muted" style="max-width: 400px; margin: 0 auto 24px auto; font-size: 0.95rem;">
+                        El proceso de regularización en la ronda 3 finalizó sin discrepancias por conciliar.
                     </p>
-                    <button class="btn btn-secondary mt-3" onclick="cargarListadoConteo('${zona}')">
-                        Iniciar nuevo conteo
-                    </button>
+                    <div class="flex-row gap-2" style="justify-content: center;">
+                        <button class="btn btn-secondary" onclick="cargarListadoConteo('${zona}')">
+                            Iniciar nuevo conteo
+                        </button>
+                        <button class="btn btn-danger" onclick="window.logout()">
+                            Cerrar Sesión
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -656,20 +665,23 @@ export async function aplicarAjustes() {
 
         if (bodyEl) {
             bodyEl.innerHTML = `
-                <div class="flex-row gap-2 mb-3" style="justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                    <div>
-                        <strong style="color: var(--color-success);">✅ Proceso finalizado</strong>
-                        <p class="text-muted" style="margin-top:4px; font-size:0.85rem;">
-                            Se aplicaron ${discrepancias.length} ajuste(s) al inventario.
-                        </p>
-                    </div>
-                    <div class="flex-row gap-2">
-                        <button class="btn btn-secondary btn-sm" onclick="cargarListadoConteo('${zona}')">
+                <div class="text-center" style="padding: 30px 20px 10px 20px;">
+                    <div style="font-size: 3rem; margin-bottom: 12px;">✅</div>
+                    <h3 style="margin-bottom: 8px; color: var(--color-success);">Ajustes Aplicados Correctamente</h3>
+                    <p class="text-muted" style="max-width: 500px; margin: 0 auto 20px auto; font-size: 0.95rem;">
+                        Se ha actualizado el inventario en el sistema con las diferencias conciliadas en la ronda 3.
+                    </p>
+                    <div class="flex-row gap-2 mb-4" style="justify-content: center;">
+                        <button class="btn btn-secondary" onclick="cargarListadoConteo('${zona}')">
                             Iniciar nuevo conteo
+                        </button>
+                        <button class="btn btn-danger" onclick="window.logout()">
+                            Cerrar Sesión
                         </button>
                     </div>
                 </div>
-                <div style="overflow-x: auto;">
+                <div style="overflow-x: auto; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <h4 style="margin-bottom: 12px; color: var(--text-primary); text-align: left;">Resumen de Ajustes</h4>
                     <table class="table">
                         <thead>
                             <tr>

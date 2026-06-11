@@ -17,7 +17,7 @@ export async function fetchAPI(endpoint, method = 'GET', body = null) {
             options.body = JSON.stringify(body);
         }
         const res = await fetch(`${API_URL}${endpoint}`, options);
-        
+
         // Si el servidor responde 401, forzar re-login
         if (res.status === 401) {
             localStorage.removeItem('auth_token');
@@ -56,6 +56,25 @@ export async function verifyOTPAndReset(username, otp, newPassword) {
     return await fetchAPI('/auth/otp-verify', 'POST', { username, otp, newPassword });
 }
 
+export async function logout() {
+    try {
+        await
+            fetchAPI('/auth/logout', 'POST');
+    }
+    catch (err) {
+        console.warn('Error al cerrar sesión', err);
+    } finally {
+        localStorage.removeItem('auth_token');
+        alert('Sesion Cerrada correctamente.')
+        if (window.showView) {
+            window.showView('dashboard');
+        }
+    }
+}
+
+
+
+
 export async function checkAuth() {
     try {
         const data = await fetchAPI('/auth/check');
@@ -70,6 +89,7 @@ window.login = login;
 window.requestOTP = requestOTP;
 window.verifyOTPAndReset = verifyOTPAndReset;
 window.checkAuth = checkAuth;
+window.logout = logout;
 
 // --- Regularización de Inventario ---
 

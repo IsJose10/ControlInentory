@@ -12,7 +12,7 @@ export async function loadProductos() {
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No hay productos registrados</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay productos registrados</td></tr>';
             return;
         }
 
@@ -27,9 +27,6 @@ export async function loadProductos() {
                     <td>${p.alto || 0}m x ${p.largo || 0}m x ${p.ancho || 0}m</td>
                     <td>${p.unidad_compra || 'Und'}</td>
                     <td>${p.unidad_consumo || 'Und'}</td>
-                    <td>
-                        <button class="btn btn-secondary btn-sm" onclick="editarProducto('${p.codigo}')">Editar</button>
-                    </td>
                 </tr>
             `;
         });
@@ -98,6 +95,23 @@ export function editarProducto(codigo) {
         document.getElementById('prod-ancho').value = p.ancho || '';
         document.getElementById('prod-unidad-compra').value = p.unidad_compra || 'Und';
         document.getElementById('prod-unidad-consumo').value = p.unidad_consumo || 'Und';
+    }
+}
+
+export function buscarYEditarProducto() {
+    const input = document.getElementById('prod-buscar-rapido');
+    if (!input) return;
+    const codigo = input.value.trim();
+    if (!codigo) {
+        alert('Por favor, ingrese un código de producto.');
+        return;
+    }
+    const p = state.productos.find(x => x.codigo.toLowerCase() === codigo.toLowerCase());
+    if (p) {
+        editarProducto(p.codigo);
+        input.value = ''; // Limpiar campo de búsqueda
+    } else {
+        alert('Producto no encontrado en el catálogo.');
     }
 }
 
@@ -609,6 +623,7 @@ window.loadProductos = loadProductos;
 window.limpiarFormProducto = limpiarFormProducto;
 window.guardarProducto = guardarProducto;
 window.editarProducto = editarProducto;
+window.buscarYEditarProducto = buscarYEditarProducto;
 window.switchProdTab = switchProdTab;
 window.descargarPlantillaCSVProductos = descargarPlantillaCSVProductos;
 window.procesarArchivoCSVProductos = procesarArchivoCSVProductos;

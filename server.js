@@ -51,6 +51,16 @@ const apiRoutes = {
         }
     },
 
+    'POST /api/auth/logout': async (req, res) => {
+        const authHeader = req.headers['authorization'];
+        if (authHeader) {
+            const token = authHeader.split(' ')[1];
+
+            activeSessions.delete(token)
+        }
+        return sendJSON(res, 200, { success: true, message: 'Cierre de sesion exitoso' });
+    },
+
     'POST /api/auth/otp-request': async (req, res) => {
         const body = await getRequestBody(req);
         const { username } = body;
@@ -59,7 +69,7 @@ const apiRoutes = {
         }
         try {
             const otp = await db.generateOTP(username);
-            
+
             // Imprimir el OTP de manera destacada en la consola del servidor
             console.log("\n==================================================");
             console.log("🚨 SOLICITUD DE RESTABLECIMIENTO DE CONTRASEÑA 🚨");

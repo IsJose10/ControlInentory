@@ -3,12 +3,12 @@ import http from 'http';
 
 const PORT = 3998;
 
-function req(method, path, body) {
+function req(method, path, body, headers = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const r = http.request({
       host: '127.0.0.1', port: PORT, path, method,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...headers }
     }, (res) => {
       let buf = '';
       res.on('data', c => { buf += c; });
@@ -41,16 +41,20 @@ function waitForServer(proc) {
   try {
     await waitForServer(server);
 
+    const loginRes = await req('POST', '/api/auth/login', { username: 'admin', password: 'admin123' });
+    const token = loginRes.body && loginRes.body.token;
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+
     const pick = await req('GET', '/api/inventario/regularizacion/picking');
     assert(pick.status === 200 && Array.isArray(pick.body), 'GET picking returns 200 + array');
 
     const monta = await req('GET', '/api/inventario/regularizacion/montacarguista');
     assert(monta.status === 200 && Array.isArray(monta.body), 'GET montacarguista returns 200 + array');
 
-    const bad = await req('POST', '/api/inventario/regularizacion/aplicar', { zona: 'PICKING' });
+    const bad = await req('POST', '/api/inventario/regularizacion/aplicar', { zona: 'PICKING' }, authHeader);
     assert(bad.status === 400, 'POST aplicar without ajustes array returns 400');
 
-    const ok = await req('POST', '/api/inventario/regularizacion/aplicar', { zona: 'PICKING', ajustes: [] });
+    const ok = await req('POST', '/api/inventario/regularizacion/aplicar', { zona: 'PICKING', ajustes: [] }, authHeader);
     assert(ok.status === 200 && ok.body && ok.body.success === true && ok.body.ajustes_aplicados === 0,
       'POST aplicar with empty ajustes returns 200 success, 0 applied');
 
