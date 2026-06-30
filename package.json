@@ -1,7 +1,7 @@
 {
-  "name": "habitad-wms",
+  "name": "wms-app",
   "version": "1.0.0",
-  "description": "Sistema WMS para Habitad con SQLite local y PostgreSQL en producción",
+  "description": "Sistema WMS con SQLite local y PostgreSQL en producción",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
